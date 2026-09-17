@@ -1,0 +1,481 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ══════════════════════════════════════════════════════════════
+   Runtime theme variables.
+   These defaults mirror the "Deep Blue" preset; ThemeProvider
+   overwrites them on the document root whenever settings change,
+   so recolouring never costs a React re-render.
+   ══════════════════════════════════════════════════════════════ */
+:root {
+  --bg-base: #070b14;
+  --bg-surface: #0d1424;
+  --bg-elevated: #121b2e;
+  --accent: #3b82f6;
+  --accent-bright: #60a5fa;
+  --accent-glow: rgba(59, 130, 246, 0.45);
+  --text-untyped: #4b5563;
+  --text-correct: #ffffff;
+  --text-incorrect: #ef4444;
+  /*
+     Soft errors: a key pressed where the slot expected something else — a space typed
+     mid-word, or a letter typed at the separator. The hard red is reserved for a genuine
+     character mistake, so the two are never confused at a glance. Derived from the theme's
+     own error colour, so a preset change carries it along for free.
+  */
+  --text-incorrect-soft: color-mix(in srgb, var(--text-incorrect) 72%, transparent);
+  --text-muted: #64748b;
+  --caret: #60a5fa;
+  --border: rgba(96, 165, 250, 0.15);
+
+  /*
+     The interface's translucent fills.
+
+     Every panel, button, chip and field in the app is a veil of ink over the background
+     rather than a colour of its own. Written as variables — and rewritten by ThemeProvider
+     from the *luminance* of the active theme's background — because a veil that is always
+     white is invisible on a white theme: the light preset would lose its panels entirely.
+     These three defaults are the dark half of the pair; `colorsToCssVars` overrides them.
+  */
+  --surface-veil: rgb(255 255 255 / 0.03);
+  --surface-veil-strong: rgb(255 255 255 / 0.05);
+  --track-veil: rgb(255 255 255 / 0.09);
+
+  /* Derived / adjustable */
+  --glow-strength: 1;
+  --error-word-underline: rgba(239, 68, 68, 0.4);
+
+  /* Typography — written by ThemeProvider from settings */
+  --font-ui: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace,
+    'Fira Code', 'Roboto Mono', 'SF Mono', Menlo, Consolas, monospace;
+  --type-size: 28px;
+  --type-line-height: 1.7;
+  --type-letter-spacing: 0.02em;
+  /* Resolved line box height in px, recomputed by JS so the 3-line viewport is exact. */
+  --line-box: 47.6px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Base
+   ══════════════════════════════════════════════════════════════ */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--bg-base);
+    color: var(--text-muted);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+  }
+
+  ::selection {
+    background: var(--accent-glow);
+    color: var(--text-correct);
+  }
+
+  /* Visible accent focus rings, keyboard-only. */
+  :focus-visible {
+    outline: 2px solid var(--accent-bright);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Sliders get the accent hue for free. */
+  input[type='range'] {
+    accent-color: var(--accent-bright);
+  }
+
+  /* Colour swatches */
+  input[type='color'] {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+  }
+  input[type='color']::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  input[type='color']::-webkit-color-swatch {
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Components
+   ══════════════════════════════════════════════════════════════ */
+@layer components {
+  /* ── Frameless window chrome ──────────────────────────────────
+     The window has no native frame, so the empty stretch of the bar has to *be* the caption:
+     `app-region: drag` is what turns mousedown-and-move there into a window drag, and it is
+     also what makes the double-click-to-maximize gesture land on the bar rather than on the
+     page. The `no-drag` counterpart is not optional — a control inside a drag region swallows
+     its own clicks, so every interactive element in the strip opts back out.
+
+     Both spellings are declared: Chromium reads the prefixed property, and the unprefixed
+     one is the standard it is migrating to. */
+  .app-drag {
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+  .app-no-drag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+
+  /* The three window buttons.
+
+     Sized to the full height of the bar and 44px wide, because they are the app's own
+     replacement for the OS ones and a smaller target than the platform's would be a step
+     backwards. Every colour comes from a theme variable — including the close button's red,
+     which is the theme's own `--text-incorrect`, not a hardcoded one — so switching presets
+     recolours the window buttons with everything else. */
+  .win-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 100%;
+    border: 0;
+    padding: 0;
+    background-color: transparent;
+    color: var(--text-muted);
+    cursor: default;
+    transition:
+      color 140ms ease,
+      background-color 140ms ease,
+      box-shadow 140ms ease,
+      opacity 140ms ease;
+  }
+  .win-btn:hover {
+    color: var(--text-correct);
+    background-color: color-mix(in srgb, var(--accent) 24%, transparent);
+    box-shadow: inset 0 0 26px -10px var(--accent-glow);
+  }
+  .win-btn:focus-visible {
+    outline-offset: -3px;
+  }
+  .win-btn-close:hover {
+    color: #fff;
+    background-color: color-mix(in srgb, var(--text-incorrect) 82%, transparent);
+    box-shadow: inset 0 0 30px -12px rgb(0 0 0 / 0.6);
+  }
+
+  /* Glassy panel — brief §4.4 */
+  .panel {
+    background-color: var(--surface-veil-strong);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow:
+      0 0 0 1px var(--surface-veil) inset,
+      0 18px 60px -28px var(--accent-glow);
+  }
+
+  /* Glassy button */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    background-color: var(--surface-veil);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition:
+      color 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      background-color 160ms ease;
+  }
+  .btn:hover {
+    color: var(--text-correct);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    box-shadow: 0 0 22px -6px var(--accent-glow);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+    background-color: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--text-correct);
+  }
+  .btn-primary:hover {
+    background-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    box-shadow: 0 0 30px -6px var(--accent-glow);
+  }
+
+  /* Noise texture overlay, ~3% — brief §4.1 */
+  .noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+  }
+
+  /* The 3-line viewport's dissolve — brief §5.3.
+
+     The gradient is anchored to the viewport, not to the text: fully transparent at the
+     top edge, fully opaque by a quarter of the way down, opaque again through the bottom
+     quarter, and fully transparent at the bottom edge. The middle line — the one the
+     typist is actually reading — is therefore never touched, and each outer line
+     dissolves across its *own* full height rather than sharing a short fade band.
+
+     The two intermediate stops at 11% and 89% exist purely to bend the ramp: a straight
+     linear fade has a visible knee where it meets full opacity, and easing into it is what
+     makes the incoming line look like it is surfacing rather than being uncovered.
+
+     This is applied to the text element alone. The caret is rendered in an unmasked
+     sibling layer (see `TypingArea`) precisely so it cannot inherit this fade. */
+  .prompt-mask {
+    --prompt-fade: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgb(0 0 0 / 0.5) 11%,
+      #000 25%,
+      #000 75%,
+      rgb(0 0 0 / 0.5) 89%,
+      transparent 100%
+    );
+    -webkit-mask-image: var(--prompt-fade);
+    mask-image: var(--prompt-fade);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+  }
+
+  /* The mode's own options row, which can hold whatever the user named their passages.
+     Scrolling beats wrapping: the row lives in a reserved 48px slot, so a wrap would either
+     spill out of it or push the prompt around, and neither is acceptable for a control strip.
+     The scrollbar itself is hidden — a row that scrolls is a hint the layout is overfull, and
+     this one is not. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ── Effect switches ──────────────────────────────────────────
+     Three of the five effects are properties that code in a dozen components sets inline:
+     `backdrop-filter`, the per-character animation classes, and the character-in/error
+     keyframes. Rather than thread a boolean through every one of them, ThemeProvider puts the
+     switch on `<html>` as a data attribute and these rules do the rest. The `!important` is
+     the point of the exercise here, not a shortcut — the declarations being overridden are
+     inline styles, which nothing else outranks.
+
+     What is actually being bought: `backdrop-filter` is a filter pass over every pixel of
+     everything behind the element, on every frame the element moves; and with a thousand
+     characters mounted, a keyframe per character is a style recalculation per character per
+     keystroke. */
+  html[data-glass='off'] *,
+  html[data-glass='off'] *::before,
+  html[data-glass='off'] *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* The glow layer is a shadow pass per character, and the characters change constantly. */
+  html[data-effects='lite'] .char-incorrect {
+    text-shadow: none;
+  }
+
+  /* Slim scrollbar for the settings slide-over */
+  .thin-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--accent) 35%, transparent) transparent;
+  }
+  .thin-scroll::-webkit-scrollbar {
+    width: 10px;
+  }
+  .thin-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .thin-scroll::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--accent) 28%, transparent);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  .thin-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+
+  /* ── Typing surface geometry ──────────────────────────────────
+     Every character is an inline-block whose height is exactly one line box, and the
+     container's line-height is the same integer, so lines land on exact multiples of
+     `--line-box` and the 3-line viewport can never drift. `vertical-align: top` keeps
+     the word and character boxes aligned to the line box rather than to a baseline. */
+  .typing-text {
+    /* Deliberately static: this keeps each character's offsetParent the scrolling
+       container, so its offsetLeft/offsetTop are directly usable as caret coordinates. */
+    position: static;
+    text-align: left;
+    color: var(--text-untyped);
+  }
+
+  .tword {
+    display: inline-block;
+    white-space: nowrap;
+    vertical-align: top;
+    line-height: var(--line-box);
+  }
+
+  .tchar {
+    display: inline-block;
+    height: var(--line-box);
+    line-height: var(--line-box);
+    vertical-align: top;
+    white-space: pre;
+  }
+
+  /* Typing surface character states — driven entirely by CSS variables */
+  .char-correct {
+    color: var(--text-correct);
+  }
+  .char-untyped {
+    color: var(--text-untyped);
+  }
+  .char-incorrect {
+    color: var(--text-incorrect);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--text-incorrect) 60%, transparent);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.18em;
+    text-shadow: 0 0 calc(10px * var(--glow-strength)) rgb(239 68 68 / 0.55);
+  }
+
+  /* ── Soft errors ──────────────────────────────────────────────
+     A key that landed on the wrong kind of slot rather than on the wrong letter. It is
+     marked where it happened — the character under the cursor for a space typed mid-word,
+     the separator itself for a letter typed at the slot — and it never moves the cursor,
+     because there is nothing to advance past.
+
+     These rules sit after `.char-untyped` and `.char-incorrect` on purpose: identical
+     specificity, so the later declaration is the one that paints. */
+  .char-soft-error {
+    color: var(--text-incorrect-soft);
+    text-decoration: underline;
+    text-decoration-color: var(--text-incorrect-soft);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.18em;
+  }
+
+  /*
+     The separator between two words is a real, selectable slot now rather than an
+     implicit skip: it occupies exactly the width of a space, stays invisible while
+     nothing is wrong, and paints a soft red tile when a character is typed into it. The
+     glyph is painted transparent rather than removed so the box — and therefore every
+     offset to its right — never moves.
+  */
+  .char-space {
+    color: transparent;
+  }
+  .char-space.char-soft-error {
+    background: color-mix(in srgb, var(--text-incorrect) 18%, transparent);
+    border-radius: 2px;
+    text-decoration: none;
+  }
+
+  /* A mistyped position carries two glyphs — the one you were meant to type and the one
+     you pressed — and this attribute picks which paints. Rendering both and hiding one is
+     what keeps the choice out of the per-character props (see `Char`), and `display: none`
+     takes the hidden glyph out of layout and the accessibility tree alike. */
+  .char-glyph {
+    display: inline;
+  }
+  html[data-error-display='target'] .char-glyph-typed {
+    display: none;
+  }
+  html[data-error-display='typed'] .char-glyph-target {
+    display: none;
+  }
+  /* Untyped characters inside a word that was skipped with errors still
+     carry the dim red underline, so the mistake stays visible — brief §7. */
+  .char-error-word {
+    text-decoration: underline;
+    text-decoration-color: var(--error-word-underline);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.18em;
+  }
+}
+
+/* ── Effect switches that must not be nested in a layer
+   (kept out of `@layer components` so they always beat the utilities they cancel) ── */
+html[data-char-anim='off'] .animate-char-in,
+html[data-char-anim='off'] .animate-char-error,
+html[data-char-anim='off'] .animate-word-settle {
+  animation: none !important;
+}
+
+/*
+   A light theme has one problem the palette cannot solve: the text-shadow glows were chosen
+   to sit on black. On white they smear the prompt instead of lighting it, so they are
+   cancelled there — a decision made once, here, rather than in every component that draws
+   one.
+*/
+html[data-theme-light='true'] .typing-text {
+  text-shadow: none;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Reduced motion
+
+   `prefers-reduced-motion` is honoured unconditionally as a floor.
+   `html.reduce-motion` is set by the app when the user forces it on
+   (or when the setting is 'auto' and the media query matches), which
+   also collapses Framer Motion via <MotionConfig>.
+   ══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
