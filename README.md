@@ -20,6 +20,7 @@ A modern typing speed test with animated visuals and deep customization.
     <td></td>
   </tr>
 </table>
+
 ## Features
 
 | Feature | Details |
